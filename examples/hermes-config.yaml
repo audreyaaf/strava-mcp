@@ -1,0 +1,4 @@
+mcp_servers:
+  strava:
+    command: "uvx"
+    args: ["strava-mcp"]

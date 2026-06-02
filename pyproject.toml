@@ -1,0 +1,52 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "strava-mcp"
+version = "0.1.0"
+description = "MCP server for Strava — connect AI agents to your training data."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "Audrey" }
+]
+keywords = ["mcp", "strava", "fitness", "ai", "agents", "training"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3.12",
+]
+dependencies = [
+  "httpx>=0.27.0",
+  "mcp>=1.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+  "pytest-asyncio>=0.23.0",
+  "ruff>=0.8.0",
+]
+
+[project.urls]
+Homepage = "https://github.com/audrey-af/strava-mcp"
+Repository = "https://github.com/audrey-af/strava-mcp"
+Issues = "https://github.com/audrey-af/strava-mcp/issues"
+
+[project.scripts]
+strava-mcp = "strava_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/strava_mcp"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py311"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]
