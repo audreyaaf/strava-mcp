@@ -1,8 +1,8 @@
 {
   "mcpServers": {
     "strava": {
-      "command": "uvx",
-      "args": ["strava-mcp"]
+      "command": "uv",
+      "args": ["--directory", "/home/audrey/projects/strava-mcp", "run", "strava-mcp"]
     }
   }
 }

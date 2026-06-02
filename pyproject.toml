@@ -34,9 +34,9 @@ dev = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/audrey-af/strava-mcp"
-Repository = "https://github.com/audrey-af/strava-mcp"
-Issues = "https://github.com/audrey-af/strava-mcp/issues"
+Homepage = "https://github.com/audreyaaf/strava-mcp"
+Repository = "https://github.com/audreyaaf/strava-mcp"
+Issues = "https://github.com/audreyaaf/strava-mcp/issues"
 
 [project.scripts]
 strava-mcp = "strava_mcp.cli:main"
