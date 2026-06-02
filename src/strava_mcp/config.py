@@ -11,12 +11,6 @@ DEFAULT_REDIRECT_PORT = 8765
 DEFAULT_REDIRECT_PATH = "/callback"
 DEFAULT_SCOPES = ["read", "activity:read_all", "profile:read_all"]
 
-# Public fallback placeholders. For OSS release, replace these only after validating
-# Strava's policy for distributed desktop/CLI apps. Users can always pass custom
-# credentials via CLI flags or env vars.
-BUNDLED_CLIENT_ID = os.getenv("STRAVA_MCP_CLIENT_ID", "")
-BUNDLED_CLIENT_SECRET = os.getenv("STRAVA_MCP_CLIENT_SECRET", "")
-
 
 def config_dir() -> Path:
     base = os.getenv("XDG_CONFIG_HOME")
@@ -35,3 +29,11 @@ def credentials_path() -> Path:
 
 def redirect_uri(port: int = DEFAULT_REDIRECT_PORT) -> str:
     return f"http://localhost:{port}{DEFAULT_REDIRECT_PATH}"
+
+
+def env_client_id() -> str:
+    return os.getenv("STRAVA_CLIENT_ID", "").strip()
+
+
+def env_client_secret() -> str:
+    return os.getenv("STRAVA_CLIENT_SECRET", "").strip()

@@ -5,6 +5,7 @@ from typing import Any
 from mcp.server.fastmcp import FastMCP
 
 from . import tools
+from .auth import AuthError, load_token, run_auth_flow
 
 mcp = FastMCP("strava-mcp")
 
@@ -48,7 +49,18 @@ def summarize_training(
     return tools.summarize_training(per_page=per_page, after=after, before=before)
 
 
+def ensure_auth_ready() -> None:
+    try:
+        load_token()
+    except AuthError:
+        try:
+            run_auth_flow()
+        except AuthError as exc:
+            raise SystemExit(str(exc)) from exc
+
+
 def main() -> None:
+    ensure_auth_ready()
     mcp.run()
 
 

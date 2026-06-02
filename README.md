@@ -4,7 +4,7 @@ MCP server for Strava — connect AI agents to your training data.
 
 `strava-mcp` is a lightweight Python stdio MCP server. It lets MCP-capable clients like Hermes, OpenClaw, Claude, Cursor, Codex, and Kiro read Strava athlete/activity data through safe local OAuth token storage.
 
-> Status: MVP scaffold is working locally. OAuth, CLI commands, MCP tools, tests, and lint are in place. Shared bundled OAuth credentials are intentionally not shipped yet.
+> Status: MVP scaffold is working locally. OAuth, CLI commands, MCP tools, tests, and lint are in place. This project now uses user-owned Strava credentials only.
 
 ## Features
 
@@ -22,6 +22,8 @@ MCP server for Strava — connect AI agents to your training data.
   - `strava-mcp summary`
   - `strava-mcp activities`
   - `strava-mcp token-path`
+  - `strava-mcp doctor`
+  - `strava-mcp logout`
 
 ## Install for development
 
@@ -36,39 +38,67 @@ Validation status:
 - `uv run pytest -q` ✅
 - `uv run ruff check .` ✅
 
-## Authorize Strava
+## Strava Setup
 
-For now, use your own Strava API credentials while the bundled-app strategy is validated.
+This MCP server uses user-owned Strava API credentials.
 
-1. Create an app at https://www.strava.com/settings/api
-2. Set callback domain to `localhost`
-3. Run:
+It does not ship shared credentials. Each user must create their own Strava API application.
 
-```bash
-uv run strava-mcp auth --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
+### Step 1: Create Strava API Application
+
+Open:
+
+https://www.strava.com/settings/api
+
+Create a new API application.
+
+Set:
+
+```text
+Authorization Callback Domain = localhost
 ```
 
-This opens a browser, receives the local callback, and stores tokens at:
+### Step 2: Export Credentials
+
+```bash
+export STRAVA_CLIENT_ID="your_client_id"
+export STRAVA_CLIENT_SECRET="your_client_secret"
+```
+
+Or add them to your environment manager / `.env` file:
+
+```env
+STRAVA_CLIENT_ID=your_client_id
+STRAVA_CLIENT_SECRET=your_client_secret
+```
+
+### Step 3: Authenticate
+
+```bash
+uv run strava-mcp auth
+```
+
+The agent opens Strava login in your browser.
+
+After approval, the token is stored locally:
 
 ```text
 ~/.config/strava-mcp/token.json
 ```
 
-You can also use env vars:
+If you prefer one-off flags, you can still use:
 
 ```bash
-export STRAVA_MCP_CLIENT_ID=YOUR_CLIENT_ID
-export STRAVA_MCP_CLIENT_SECRET=YOUR_CLIENT_SECRET
-uv run strava-mcp auth
+uv run strava-mcp auth --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET
 ```
 
 Headless flow:
 
 ```bash
-uv run strava-mcp auth --client-id YOUR_CLIENT_ID --client-secret YOUR_CLIENT_SECRET --no-browser
+uv run strava-mcp auth --no-browser
 ```
 
-## Run as MCP server
+### Step 4: Start Agent
 
 ```bash
 uvx strava-mcp
@@ -77,6 +107,27 @@ uv run strava-mcp
 ```
 
 No subcommand means stdio MCP server mode.
+
+### Troubleshooting
+
+Check setup:
+
+```bash
+uv run strava-mcp doctor
+```
+
+Logout:
+
+```bash
+uv run strava-mcp logout
+```
+
+If login fails, check:
+
+- `STRAVA_CLIENT_ID` is correct
+- `STRAVA_CLIENT_SECRET` is correct
+- Authorization Callback Domain is exactly `localhost`
+- Port `8765` is not already used by another process
 
 ## Hermes Agent config
 
@@ -183,6 +234,8 @@ args = ["strava-mcp"]
 uv run strava-mcp summary --per-page 20
 uv run strava-mcp activities --per-page 5
 uv run strava-mcp token-path
+uv run strava-mcp doctor
+uv run strava-mcp logout
 ```
 
 ## Documentation
@@ -194,15 +247,14 @@ uv run strava-mcp token-path
 
 ## Notes from current review
 
-- OAuth URL generation is correct and uses `http://localhost:8765/callback`.
+- OAuth URL generation uses `http://localhost:8765/callback`.
 - State validation is present.
 - Token refresh is implemented.
-- Tests currently cover config date parsing and summary aggregation, but not live OAuth/network paths yet.
-- `pyproject.toml` repository URLs still need final alignment with the chosen GitHub repo slug.
+- Tests cover config date parsing, auth setup copy, and summary aggregation.
+- This repo now assumes user-owned Strava OAuth credentials.
 
 ## Roadmap
 
-- Validate public/bundled Strava OAuth app strategy
 - Add tests with mocked Strava API responses
 - Add better training analysis tools
 - Add weekly/monthly summary helpers

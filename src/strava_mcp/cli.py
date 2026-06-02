@@ -4,7 +4,12 @@ import argparse
 import json
 import sys
 
-from .auth import AuthError, run_auth_flow
+from .auth import (
+    AuthError,
+    get_missing_credentials,
+    load_token,
+    run_auth_flow,
+)
 from .config import DEFAULT_REDIRECT_PORT, DEFAULT_SCOPES, token_path
 from .server import main as server_main
 from .tools import list_activities, summarize_training
@@ -38,6 +43,8 @@ def build_parser() -> argparse.ArgumentParser:
     )
 
     sub.add_parser("token-path", help="Print local token path.")
+    sub.add_parser("doctor", help="Check Strava credential and token setup.")
+    sub.add_parser("logout", help="Delete local Strava token.")
 
     summary = sub.add_parser("summary", help="Print recent training summary as JSON.")
     summary.add_argument("--per-page", type=int, default=20)
@@ -54,6 +61,52 @@ def build_parser() -> argparse.ArgumentParser:
     serve.set_defaults(command="serve")
 
     return parser
+
+
+def _run_doctor() -> None:
+    missing = get_missing_credentials()
+
+    print("Strava MCP Doctor")
+    print()
+    if "STRAVA_CLIENT_ID" in missing:
+        print("[FAIL] STRAVA_CLIENT_ID tidak ditemukan")
+    else:
+        print("[OK] STRAVA_CLIENT_ID ditemukan")
+
+    if "STRAVA_CLIENT_SECRET" in missing:
+        print("[FAIL] STRAVA_CLIENT_SECRET tidak ditemukan")
+    else:
+        print("[OK] STRAVA_CLIENT_SECRET ditemukan")
+
+    try:
+        token = load_token()
+        expires_at = int(token.get("expires_at", 0))
+        if expires_at > 0:
+            print("[OK] Token ditemukan")
+        else:
+            print("[WARN] Token ditemukan tapi expires_at tidak valid")
+    except AuthError:
+        print("[FAIL] Token file belum tersedia atau tidak valid")
+
+    print(f"[INFO] Token path: {token_path()}")
+    print()
+    if not missing:
+        print("[INFO] Credentials siap. Jalankan `strava-mcp auth` kalau token belum ada.")
+    else:
+        print("[INFO] Setup belum lengkap. Tambahkan credentials lalu jalankan ulang.")
+
+
+def _run_logout() -> None:
+    path = token_path()
+    if path.exists():
+        path.unlink()
+        print("Token Strava lokal sudah dihapus.")
+    else:
+        print("Token Strava lokal sudah tidak ada.")
+    print(f"Token path: {path}")
+    print()
+    print("Credentials environment tidak dihapus.")
+    print("Jalankan auth lagi untuk login ulang.")
 
 
 def main(argv: list[str] | None = None) -> None:
@@ -81,6 +134,10 @@ def main(argv: list[str] | None = None) -> None:
                 last = athlete.get("lastname", "")
                 print(f"Athlete: {first} {last}".strip())
             print(f"Token saved to: {token_path()}")
+        elif args.command == "doctor":
+            _run_doctor()
+        elif args.command == "logout":
+            _run_logout()
         elif args.command == "token-path":
             print(token_path())
         elif args.command == "summary":

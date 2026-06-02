@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import secrets
+import sys
 import time
 import urllib.parse
 import webbrowser
@@ -12,14 +13,14 @@ from typing import Any
 import httpx
 
 from .config import (
-    BUNDLED_CLIENT_ID,
-    BUNDLED_CLIENT_SECRET,
     DEFAULT_REDIRECT_PATH,
     DEFAULT_REDIRECT_PORT,
     DEFAULT_SCOPES,
     STRAVA_OAUTH_AUTHORIZE_URL,
     STRAVA_OAUTH_TOKEN_URL,
     credentials_path,
+    env_client_id,
+    env_client_secret,
     redirect_uri,
     token_path,
 )
@@ -29,8 +30,76 @@ class AuthError(RuntimeError):
     pass
 
 
+def get_missing_credentials() -> list[str]:
+    missing: list[str] = []
+    if not env_client_id():
+        missing.append("STRAVA_CLIENT_ID")
+    if not env_client_secret():
+        missing.append("STRAVA_CLIENT_SECRET")
+    return missing
+
+
+def get_setup_guide(missing: list[str] | None = None) -> str:
+    missing = missing or get_missing_credentials()
+    missing_lines = "\n".join(f"- {item}" for item in missing) if missing else "- none"
+    return f"""Strava belum dikonfigurasi untuk agent ini.
+
+Setup belum lengkap:
+{missing_lines}
+
+Agar agent bisa mengakses akun Strava kamu dengan aman, kamu harus memakai
+Client ID dan Client Secret milikmu sendiri.
+
+Kenapa?
+- Strava mewajibkan Client Secret untuk login OAuth dan refresh token
+- Agent ini tidak memakai shared credentials
+- Credentials kamu tetap berada di mesin kamu sendiri
+
+Setup langkah demi langkah:
+
+1. Buka halaman Strava API
+   https://www.strava.com/settings/api
+
+2. Buat aplikasi API baru
+
+3. Set Authorization Callback Domain ke:
+   localhost
+
+4. Copy nilai berikut dari aplikasi kamu:
+   - Client ID
+   - Client Secret
+
+5. Simpan ke environment:
+
+   export STRAVA_CLIENT_ID="ISI_CLIENT_ID_KAMU"
+   export STRAVA_CLIENT_SECRET="ISI_CLIENT_SECRET_KAMU"
+
+   Atau di file .env:
+
+   STRAVA_CLIENT_ID=ISI_CLIENT_ID_KAMU
+   STRAVA_CLIENT_SECRET=ISI_CLIENT_SECRET_KAMU
+
+6. Jalankan ulang agent
+
+Catatan:
+- Agent ini tidak memakai shared credentials
+- Client Secret tetap berada di mesin kamu
+- Jangan share Client Secret ke orang lain
+- Setelah credentials tersedia, agent akan memulai login Strava otomatis
+
+Setelah selesai, jalankan ulang command ini.""".strip()
+
+
+def print_setup_guide(missing: list[str] | None = None) -> None:
+    print(get_setup_guide(missing), file=sys.stderr)
+
+
 def _write_json_secure(path: Path, data: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.parent.chmod(0o700)
+    except OSError:
+        pass
     path.write_text(json.dumps(data, indent=2))
     try:
         path.chmod(0o600)
@@ -48,8 +117,8 @@ def save_credentials(client_id: str, client_secret: str) -> None:
 def load_credentials() -> tuple[str, str]:
     if credentials_path().exists():
         data = json.loads(credentials_path().read_text())
-        return str(data.get("client_id", "")), str(data.get("client_secret", ""))
-    return BUNDLED_CLIENT_ID, BUNDLED_CLIENT_SECRET
+        return str(data.get("client_id", "")).strip(), str(data.get("client_secret", "")).strip()
+    return env_client_id(), env_client_secret()
 
 
 def save_token(token: dict[str, Any]) -> None:
@@ -59,10 +128,18 @@ def save_token(token: dict[str, Any]) -> None:
 def load_token() -> dict[str, Any]:
     path = token_path()
     if not path.exists():
-        raise AuthError(
-            "Strava token not found. Run `strava-mcp auth` first, or configure credentials."
-        )
-    return json.loads(path.read_text())
+        raise AuthError("Strava token not found. Run `strava-mcp auth` first.")
+    try:
+        token = json.loads(path.read_text())
+    except json.JSONDecodeError as exc:
+        raise AuthError("Strava token file is invalid. Run `strava-mcp auth` again.") from exc
+    if (
+        not isinstance(token, dict)
+        or not token.get("access_token")
+        or not token.get("refresh_token")
+    ):
+        raise AuthError("Strava token file is incomplete. Run `strava-mcp auth` again.")
+    return token
 
 
 def build_authorize_url(client_id: str, port: int, scopes: list[str], state: str) -> str:
@@ -128,9 +205,7 @@ def refresh_access_token() -> str:
     token = load_token()
     client_id, client_secret = load_credentials()
     if not client_id or not client_secret:
-        raise AuthError(
-            "Missing Strava client credentials. Run `strava-mcp auth --client-id ...`."
-        )
+        raise AuthError(get_setup_guide())
 
     response = httpx.post(
         STRAVA_OAUTH_TOKEN_URL,
@@ -164,24 +239,32 @@ def run_auth_flow(
     open_browser: bool = True,
 ) -> dict[str, Any]:
     saved_id, saved_secret = load_credentials()
-    client_id = client_id or saved_id
-    client_secret = client_secret or saved_secret
+    client_id = (client_id or saved_id or "").strip()
+    client_secret = (client_secret or saved_secret or "").strip()
     scopes = scopes or DEFAULT_SCOPES
 
-    if not client_id or not client_secret:
-        raise AuthError(
-            "Missing Strava app credentials. For now run: "
-            "strava-mcp auth --client-id YOUR_ID --client-secret YOUR_SECRET"
-        )
+    missing: list[str] = []
+    if not client_id:
+        missing.append("STRAVA_CLIENT_ID")
+    if not client_secret:
+        missing.append("STRAVA_CLIENT_SECRET")
+    if missing:
+        raise AuthError(get_setup_guide(missing))
 
     save_credentials(client_id, client_secret)
     state = secrets.token_urlsafe(24)
     url = build_authorize_url(client_id, port, scopes, state)
 
     server = _OAuthHTTPServer(("localhost", port), _CallbackHandler)
-    print(f"Open this URL to authorize Strava MCP:\n{url}\n")
+    print("Strava credentials ditemukan.", file=sys.stderr)
+    print("Membuka halaman login Strava di browser...", file=sys.stderr)
+    print(file=sys.stderr)
+    print(f"Open this URL to authorize Strava MCP:\n{url}\n", file=sys.stderr)
     if open_browser:
         webbrowser.open(url)
+
+    print("Menunggu konfirmasi login dari Strava...", file=sys.stderr)
+    print("Jangan tutup terminal ini sebelum proses selesai.", file=sys.stderr)
 
     while not server.auth_code and not server.auth_error:
         server.handle_request()
