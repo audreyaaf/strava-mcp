@@ -17,6 +17,11 @@ MCP server for Strava — connect AI agents to your training data.
   - `get_activity`
   - `get_activity_streams`
   - `summarize_training`
+  - `get_recent_activity`
+  - `summarize_week`
+  - `summarize_month`
+  - `compare_weeks`
+  - `find_personal_bests`
 - Standalone CLI helpers:
   - `strava-mcp auth`
   - `strava-mcp summary`

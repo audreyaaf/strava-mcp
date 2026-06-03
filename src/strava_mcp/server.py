@@ -1,11 +1,12 @@
 from __future__ import annotations
 
+import sys
 from typing import Any
 
 from mcp.server.fastmcp import FastMCP
 
 from . import tools
-from .auth import AuthError, load_token, run_auth_flow
+from .auth import AuthError, load_token, print_setup_guide
 
 mcp = FastMCP("strava-mcp")
 
@@ -49,14 +50,42 @@ def summarize_training(
     return tools.summarize_training(per_page=per_page, after=after, before=before)
 
 
+@mcp.tool()
+def get_recent_activity() -> dict[str, Any]:
+    """Get the latest Strava activity with formatted pace/speed and duration."""
+    return tools.get_recent_activity()
+
+
+@mcp.tool()
+def summarize_week(now: str | None = None) -> dict[str, Any]:
+    """Summarize the last 7 days of training."""
+    return tools.summarize_week(now=now)
+
+
+@mcp.tool()
+def summarize_month(now: str | None = None) -> dict[str, Any]:
+    """Summarize the current calendar month of training."""
+    return tools.summarize_month(now=now)
+
+
+@mcp.tool()
+def compare_weeks(now: str | None = None) -> dict[str, Any]:
+    """Compare the last 7 days versus the previous 7 days."""
+    return tools.compare_weeks(now=now)
+
+
+@mcp.tool()
+def find_personal_bests(per_page: int = 200) -> dict[str, Any]:
+    """Find simple personal bests like longest activity, run, ride, and elevation."""
+    return tools.find_personal_bests(per_page=per_page)
+
+
 def ensure_auth_ready() -> None:
     try:
         load_token()
     except AuthError:
-        try:
-            run_auth_flow()
-        except AuthError as exc:
-            raise SystemExit(str(exc)) from exc
+        print_setup_guide()
+        sys.exit(1)
 
 
 def main() -> None:
