@@ -80,6 +80,24 @@ def find_personal_bests(per_page: int = 200) -> dict[str, Any]:
     return tools.find_personal_bests(per_page=per_page)
 
 
+@mcp.tool()
+def generate_training_report(period: str = "week", now: str | None = None) -> dict[str, Any]:
+    """Generate Telegram-friendly weekly or monthly training report text."""
+    return tools.generate_training_report(period=period, now=now)
+
+
+@mcp.tool()
+def analyze_run_activity(activity_id: int | None = None) -> dict[str, Any]:
+    """Analyze a run with kilometer splits, pace trend, and formatted text."""
+    return tools.analyze_run_activity(activity_id=activity_id)
+
+
+@mcp.tool()
+def generate_x_post(period: str = "week", now: str | None = None) -> dict[str, Any]:
+    """Generate a copy-paste-ready X post from Strava training data."""
+    return tools.generate_x_post(period=period, now=now)
+
+
 def ensure_auth_ready() -> None:
     try:
         load_token()
