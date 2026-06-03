@@ -93,9 +93,13 @@ def analyze_run_activity(activity_id: int | None = None) -> dict[str, Any]:
 
 
 @mcp.tool()
-def generate_x_post(period: str = "week", now: str | None = None) -> dict[str, Any]:
+def generate_x_post(
+    period: str = "week",
+    style: str = "santai",
+    now: str | None = None,
+) -> dict[str, Any]:
     """Generate a copy-paste-ready X post from Strava training data."""
-    return tools.generate_x_post(period=period, now=now)
+    return tools.generate_x_post(period=period, style=style, now=now)
 
 
 def ensure_auth_ready() -> None:

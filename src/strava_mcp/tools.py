@@ -433,17 +433,51 @@ def analyze_run_activity(activity_id: int | None = None) -> dict[str, Any]:
     }
 
 
-def generate_x_post(period: str = "week", now: str | None = None) -> dict[str, Any]:
+def generate_x_post(
+    period: str = "week",
+    style: str = "santai",
+    now: str | None = None,
+) -> dict[str, Any]:
     """Generate a copy-paste-ready X post from week or month training data."""
     normalized = "month" if period.lower().strip() in {"month", "monthly", "this_month"} else "week"
+    normalized_style = style.lower().strip()
     report = generate_training_report(period=normalized, now=now)
     summary = report["summary"]
     period_text = "Bulan ini" if normalized == "month" else "Minggu ini"
-    text = (
-        f"{period_text} di Strava: {summary['activity_count']} aktivitas, "
+    base_stats = (
+        f"{period_text}: {summary['activity_count']} aktivitas, "
         f"{summary['total_distance_km']} km, {summary['total_moving_time']}, "
-        f"elevasi {summary['total_elevation_m']} m.\n\n"
-        "Dibaca via strava-mcp, jadi data training bisa langsung masuk ke agent.\n"
-        "https://github.com/audreyaaf/strava-mcp"
+        f"elevasi {summary['total_elevation_m']} m."
     )
-    return {"text": text, "character_count": len(text), "fits_x": len(text) <= 280}
+    variants = {
+        "santai": (
+            f"Lagi nyatet latihan gue pakai Strava + agent. {base_stats}\n\n"
+            "Enak, gak perlu rekap manual lagi. Semua bisa kebaca lewat strava-mcp.\n"
+            "https://github.com/audreyaaf/strava-mcp"
+        ),
+        "technical": (
+            f"Training log minggu ini via Strava API: {summary['total_distance_km']} km, "
+            f"moving time {summary['total_moving_time']}, "
+            f"elevation gain {summary['total_elevation_m']} m.\n\n"
+            "Gue baca datanya lewat strava-mcp biar langsung bisa dipakai agent.\n"
+            "https://github.com/audreyaaf/strava-mcp"
+        ),
+        "builder": (
+            f"Baru ngetes workflow agent buat training data. {base_stats}\n\n"
+            "Sekarang data Strava bisa langsung masuk ke workflow agent lewat strava-mcp.\n"
+            "https://github.com/audreyaaf/strava-mcp"
+        ),
+        "personal-progress": (
+            f"Pelan-pelan ngelacak progress latihan lebih rapi. {base_stats}\n\n"
+            "Sekarang gue tinggal connect Strava ke agent via strava-mcp, "
+            "jadi review mingguan lebih gampang.\n"
+            "https://github.com/audreyaaf/strava-mcp"
+        ),
+    }
+    text = variants.get(normalized_style, variants["santai"])
+    return {
+        "style": normalized_style if normalized_style in variants else "santai",
+        "text": text,
+        "character_count": len(text),
+        "fits_x": len(text) <= 280,
+    }

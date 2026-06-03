@@ -73,7 +73,30 @@ def test_generate_x_post_is_copy_paste_ready_and_under_limit(monkeypatch):
 
     assert post["character_count"] <= 280
     assert post["fits_x"] is True
-    assert "Minggu ini di Strava" in post["text"]
+    assert "Minggu ini" in post["text"]
     assert "33.2 km" in post["text"]
     assert "1h 46m" in post["text"]
     assert "strava-mcp" in post["text"]
+
+
+def test_generate_x_post_supports_multiple_tones(monkeypatch):
+    monkeypatch.setattr(tools, "list_activities", lambda **kwargs: WEEK_ACTIVITIES)
+
+    santai = tools.generate_x_post(period="week", style="santai", now="2026-06-04T00:00:00Z")
+    technical = tools.generate_x_post(period="week", style="technical", now="2026-06-04T00:00:00Z")
+    builder = tools.generate_x_post(period="week", style="builder", now="2026-06-04T00:00:00Z")
+    personal = tools.generate_x_post(
+        period="week",
+        style="personal-progress",
+        now="2026-06-04T00:00:00Z",
+    )
+
+    assert santai["style"] == "santai"
+    assert technical["style"] == "technical"
+    assert builder["style"] == "builder"
+    assert personal["style"] == "personal-progress"
+    assert "gue" in santai["text"].lower()
+    assert "moving time" in technical["text"].lower()
+    assert "workflow agent" in builder["text"].lower()
+    assert "pelan-pelan" in personal["text"].lower()
+    assert all(post["fits_x"] is True for post in [santai, technical, builder, personal])
